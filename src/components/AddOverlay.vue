@@ -1,11 +1,16 @@
 <template>
-  <v-overlay :z-index="zIndex" :value="overlay">
+  <v-dialog v-model="overlay" width="500">
+    <template v-slot:activator="{ on, attrs }">
+      <v-btn color="blue" dark fixed bottom right fab v-bind="attrs" v-on="on" @click="getTags()">
+        <v-icon>mdi-plus</v-icon>
+      </v-btn>
+    </template>
     <v-card class="white">
       <v-card-title class="primary white--text mb-2"
         >Add Cognition</v-card-title
       >
       <v-card-text>
-        <v-form>
+        <v-form ref="form" v-model="valid">
           <v-text-field
             label="Title"
             :rules="rules"
@@ -36,6 +41,7 @@
             label="Add some tags"
             multiple
             light
+            :rules="comboboxRules"
             persistent-hint
             small-chips
           ></v-combobox>
@@ -47,7 +53,7 @@
         </v-btn>
       </v-card-actions>
     </v-card>
-  </v-overlay>
+  </v-dialog>
 </template>
 
 <script>
@@ -56,39 +62,54 @@ import axios from "axios";
 export default {
   name: "AddOverlay",
 
-  props: ["zIndex", "overlay", "items"],
-
   data: () => ({
     title: "",
     description: "",
     tags: [],
     search: null,
+    valid: false,
+    overlay: false,
+    items: [],
     rules: [
       (value) => !!value || "Required.",
       (value) => (value && value.length >= 3) || "Min 3 characters",
     ],
+    comboboxRules: [(value) => (value && value.length >= 1) || "Min 1 tag"],
   }),
 
   methods: {
     insertData: function () {
       var self = this;
-      axios
-        .post(
-          "/api",
-          {
+      this.$refs.form.validate();
+      if (this.valid) {
+        this.overlay = false;
+        axios
+          .post(process.env.VUE_APP_API_ENDPOINT, {
             action: "insert",
             title: this.title,
             description: this.description,
             tags: this.tags,
             items: this.items,
+          })
+          .then(function (response) {
+            self.$emit("updateData");
+            this.$refs.form.reset();
+            console.log(response.data.message);
+          });
+      }
+    },
+    getTags: function () {
+      axios
+        .post(process.env.VUE_APP_API_ENDPOINT, {
+          action: "getTags",
+        })
+        .then((response) => {
+          if (response.data) {
+            response.data.tags.forEach((entry) => {
+              this.items.push(entry);
+            });
+            console.log(response.data.message)
           }
-        )
-        .then(function (response) {
-          self.$emit("updateOverlay", false);
-          self.title = "";
-          self.description = "";
-          self.tags = [];
-          console.log(response.data.message);
         });
     },
   },
