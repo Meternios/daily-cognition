@@ -25,6 +25,9 @@
             <v-btn text color="teal accent-4">
               See more
             </v-btn>
+            <v-btn text color="teal accent-4" @click="editCognition(cognition)">
+              Edit
+            </v-btn>
             <v-btn text color="teal accent-4" @click="deleteCognition(index, cognition.cognition.ID)">
               Delete
             </v-btn>
@@ -44,6 +47,9 @@ export default {
   methods: {
     deleteCognition: function(key, cogID){
       this.$emit("removeData", {'key':key, 'cogID':cogID});
+    },
+    editCognition: function(cognition){
+      this.$emit("editData", {'cognition':cognition});
     },
   },
 

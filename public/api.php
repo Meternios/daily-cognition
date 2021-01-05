@@ -102,7 +102,8 @@
         $tagIdsQuery = "
         SELECT ID
         FROM cognition_tags
-        WHERE Name in ";
+        WHERE FK_user = ".$_SESSION["user_id"]."
+        AND Name in ";
     
         $tagIdsQuery .= "('".implode("','",$received_data->tags)."')";
         
@@ -129,6 +130,90 @@
         $statement->execute();
 
         $output['message'] = 'Cognition inserted into '.$_SESSION["user_id"];
+        
+        echo json_encode($output);
+    }
+
+    if($received_data->action == 'update')
+    {
+        //update Cognition
+        $data = array(
+        ':title' => $received_data->title,
+        ':description' => $received_data->description,
+        ':cogId' => $received_data->cogID,
+        );
+
+        $cogQuery = "
+        UPDATE cognitions
+        SET Title = :title,
+        Description = :description
+        WHERE ID = :cogId
+        ";
+
+        $statement = $connect->prepare($cogQuery);
+        
+        $statement->execute($data);
+
+        //Only add Tags if not already in DB
+        $tagsToAdd = array_diff($received_data->tags, $received_data->items);
+
+        if(!empty($tagsToAdd)){
+            $tagsQuery = "
+            INSERT INTO cognition_tags (Name, FK_user)
+            VALUES ";
+            
+            foreach ($tagsToAdd as $key => $tag) {
+                $tagsQuery .= "('".$tag."', '".$_SESSION["user_id"]."')";
+                if ($key !== array_key_last($tagsToAdd)){
+                    $tagsQuery .= ",";
+                }
+            }
+
+            $statement = $connect->prepare($tagsQuery);
+        
+            $statement->execute();
+        }
+
+        //Delete already existing tags_cogs
+        $query = "
+        DELETE FROM cogs_tags WHERE FK_cognition='".$received_data->cogID."'";
+
+        $statement = $connect->prepare($query);
+        
+        $statement->execute();
+
+        //Connect Tags and Cognitions
+        $tagIdsQuery = "
+        SELECT ID
+        FROM cognition_tags
+        WHERE FK_user = ".$_SESSION["user_id"]."
+        AND Name in ";
+    
+        $tagIdsQuery .= "('".implode("','",$received_data->tags)."')";
+        
+        $statement = $connect->prepare($tagIdsQuery);
+    
+        $statement->execute();
+
+        $tagIds = $statement->fetchAll(PDO::FETCH_ASSOC);
+
+        //Insert into cog_tags
+        $cog_tagsQuery = "
+        INSERT INTO cogs_tags (FK_cognition_tag, FK_cognition)
+        VALUES ";
+        
+        foreach ($tagIds as $key => $tagId) {
+            $cog_tagsQuery .= "(".$tagId['ID'].",".$received_data->cogID.")";
+            if ($key !== array_key_last($tagIds)){
+                $cog_tagsQuery .= ",";
+            }
+        }
+
+        $statement = $connect->prepare($cog_tagsQuery);
+    
+        $statement->execute();
+
+        $output['message'] = 'Cognition updated into '.$_SESSION["user_id"];
         
         echo json_encode($output);
     }

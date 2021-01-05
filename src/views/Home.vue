@@ -3,9 +3,10 @@
       <GoogleLogin @done="onUserLoggedIn"/>
   </v-card>
   <div class="home" style="min-height: 100vh" v-else>
-    <CognitionList :cognitions="cognitions" @removeData="removeData"/>
+    <CognitionList :cognitions="cognitions" @removeData="removeData" @editData="editData"/>
     <AddOverlay
       @updateData="updateData"
+      ref="addOverlay"
     />
   </div>
 </template>
@@ -72,6 +73,33 @@ export default {
         )
         .then((response) => {
           console.log(response.data.message);
+        });
+    },
+    editData(params) {
+      this.$refs.addOverlay.overlay = true;
+      this.$refs.addOverlay.mode = "Update";
+      this.$refs.addOverlay.title = params.cognition.cognition.Title;
+      this.$refs.addOverlay.description = params.cognition.cognition.Description;
+      this.$refs.addOverlay.cogId = params.cognition.cognition.ID;
+      
+      let selectedTags = params.cognition.tags.slice();
+      let selectedTagNames = [];
+      while(selectedTags.length) {
+        selectedTagNames.push(selectedTags.shift().Name);
+      }
+      this.$refs.addOverlay.tags = selectedTagNames;
+
+      axios
+        .post(process.env.VUE_APP_API_ENDPOINT, {
+          action: "getTags",
+        })
+        .then((response) => {
+          if (response.data) {
+            response.data.tags.forEach((entry) => {
+              this.$refs.addOverlay.items.push(entry);
+            });
+            console.log(response.data.message);
+          }
         });
     },
     onUserLoggedIn(user) {
